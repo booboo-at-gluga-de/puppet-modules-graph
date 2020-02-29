@@ -1,0 +1,109 @@
+#!/usr/bin/perl -w
+
+#    puppet-modules-graph
+#    AUTHOR: Bernd Stroessenreuther <booboo@gluga.de>
+#
+#
+#
+#    This program is free software; you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation; version 2 of the License.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program; if not, write to the Free Software
+#    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+use strict;
+use Term::ANSIColor;
+
+my $modules_path = shift || ".";
+my $roles_path = "$modules_path/role/manifests";
+
+my ($pp_file, $role_line, $profile_line, $rolename, $profilename, $profile_filename);
+my (@current_role_matching_lines, $current_role_line_num, $fill_char);
+
+if ( ! -d $roles_path ) {
+    die "unable to find role/manifests directory in $modules_path\n";
+}
+
+opendir (ROLESDIR, $roles_path) or die "unable to browse roles directory $roles_path: $!\n";
+
+    #
+    # Loop over all roles
+    #
+    foreach $pp_file (sort readdir(ROLESDIR)) {
+        if ( -f "$roles_path/$pp_file" && $pp_file =~ m/\.pp$/ ) {
+            $rolename = $pp_file;
+            $rolename =~ s/\.pp$//;
+            $rolename = "role::$rolename";
+
+            print color('bold red');
+            print "\n$rolename\n";
+            print color('reset');
+
+            @current_role_matching_lines = ();
+            open (ROLE, "$roles_path/$pp_file") or die "unable to read $roles_path/$pp_file: $!\n";
+
+                #
+                # find all profiles included in the current role
+                #
+                while ($role_line = <ROLE>) {
+                    chomp($role_line);
+                    if ($role_line =~ m/^\s*include/) {
+                        push(@current_role_matching_lines, $role_line);
+                    }
+                }
+            close(ROLE);
+
+            $current_role_line_num=0;
+
+            foreach $role_line (@current_role_matching_lines) {
+                $current_role_line_num++;
+                if ( $current_role_line_num == scalar(@current_role_matching_lines) ) {
+                    $fill_char=" ";
+                } else {
+                    $fill_char="|";
+                }
+
+                $profilename = $role_line;
+                $profilename =~ s/^\s*include\s+//;
+                $profilename =~ s/'//g;
+                $profilename =~ s/"//g;
+
+                print "|\n";
+                print "+--";
+                print color('bold blue');
+                print "$profilename\n";
+                print color('reset');
+
+                $profile_filename = $profilename;
+                $profile_filename =~ s/profile:://;
+                $profile_filename = $profile_filename . ".pp";
+
+                open (PROFILE, "$modules_path/profile/manifests/$profile_filename") or die "unable to read profile from $modules_path/profile/manifests/$profile_filename: $!\n";
+
+                    #
+                    # find all modules used in the current profile
+                    #
+                    while ($profile_line = <PROFILE>) {
+                        chomp($profile_line);
+                        if ($profile_line =~ m/^\s*class/ && $profile_line !~ m/class\s+$profilename/) {
+                            $profile_line =~ s/\s*{\s*/ /g;
+                            $profile_line =~ s/\s*}.*//g;
+                            $profile_line =~ s/#.*//g;
+                            $profile_line =~ s/:\s*$//g;
+                            $profile_line =~ s/^\s*//g;
+                            print "$fill_char      $profile_line\n";
+                        }
+                    }
+
+                close(PROFILE);
+            }
+        }
+    }
+closedir (ROLESDIR);
