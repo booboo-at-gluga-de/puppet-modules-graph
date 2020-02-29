@@ -1,7 +1,7 @@
 # puppet-modules-graph
 Provides a tree view of Puppet Modules according to  Puppet's Roles-Profiles-Pattern
 
-If you are using the Roles-Profiles-Pattern (https://puppet.com/docs/pe/2017.2/r_n_p_intro.html) for assigning Puppet modules to you systems, you might be looking for a simple overview:
+If you are using the [Roles-Profiles-Pattern](https://puppet.com/docs/pe/2017.2/r_n_p_intro.html) for assigning Puppet modules to you systems, you might be looking for a simple overview:
 
 Which role includes which profiles? And which (leaf) modules are used in these profiles?
 
